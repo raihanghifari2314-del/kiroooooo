@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chess Openings — Belajar Catur untuk Pemula</title>
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f0f1a;
+      --surface:   #1a1a2e;
+      --card:      #16213e;
+      --accent:    #e2b96f;
+      --accent2:   #7c5cbf;
+      --text:      #e8e8f0;
+      --muted:     #8888aa;
+      --light-sq:  #f0d9b5;
+      --dark-sq:   #b58863;
+      --highlight: rgba(20,200,80,.45);
+      --from-sq:   rgba(255,200,0,.55);
+      --radius:    14px;
+      --trans:     .22s ease;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      padding: 70px 20px 50px;
+      background: radial-gradient(ellipse at 50% 0%, #1f1b4b 0%, transparent 70%);
+      position: relative;
+    }
+    .hero::before {
+      content: '♟';
+      font-size: 120px;
+      opacity: .06;
+      position: absolute;
+      top: 10px; left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), #f5f5a0, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.15;
+    }
+    .hero p {
+      margin-top: 14px;
+      font-size: 1.1rem;
+      color: var(--muted);
+      max-width: 520px;
+      margin-inline: auto;
+    }
+
+    /* ── Tab Nav ── */
+    .tab-nav {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      padding: 20px 20px 0;
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      background: var(--card);
+      border: 2px solid transparent;
+      color: var(--muted);
+      padding: 10px 24px;
+      border-radius: 40px;
+      font-size: .95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--trans);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tab-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .tab-btn.active {
+      background: linear-gradient(135deg, #6a3f1a, #8b5e2a);
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 18px rgba(226,185,111,.25);
+    }
+    .tab-btn .badge {
+      background: var(--accent2);
+      color: #fff;
+      font-size: .72rem;
+      padding: 2px 7px;
+      border-radius: 20px;
+    }
+
+    /* ── Opening Panel ── */
+    .opening-panel { display: none; }
+    .opening-panel.active { display: block; }
+
+    .panel-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 36px 20px 60px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 36px;
+      align-items: start;
+    }
+    @media (max-width: 780px) {
+      .panel-inner { grid-template-columns: 1fr; }
+    }
+
+    /* ── Board Section ── */
+    .board-section { display: flex; flex-direction: column; gap: 20px; }
+
+    .board-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0,0,0,.55);
+    }
+
+    .chessboard {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .sq {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: default;
+      transition: background var(--trans);
+      aspect-ratio: 1;
+    }
+    .sq.light { background: var(--light-sq); }
+    .sq.dark  { background: var(--dark-sq); }
+    .sq.highlight { background: var(--highlight) !important; }
+    .sq.from-sq   { background: var(--from-sq) !important; }
+
+    .piece {
+      font-size: clamp(20px, 5vw, 34px);
+      line-height: 1;
+      user-select: none;
+      transition: opacity .18s;
+      filter: drop-shadow(0 2px 3px rgba(0,0,0,.4));
+      position: relative;
+      z-index: 2;
+    }
+
+    .coord-col, .coord-row {
+      position: absolute;
+      font-size: .62rem;
+      font-weight: 700;
+      opacity: .55;
+      line-height: 1;
+    }
+    .coord-row { bottom: 3px; right: 4px; }
+    .coord-col { top: 3px; left: 3px; }
+
+    /* ── Move Controls ── */
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .ctrl-btn {
+      background: var(--card);
+      border: 1.5px solid #333355;
+      color: var(--text);
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all var(--trans);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ctrl-btn:hover { background: var(--accent2); border-color: var(--accent2); }
+    .ctrl-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+    .move-counter {
+      font-size: .85rem;
+      color: var(--muted);
+      min-width: 70px;
+      text-align: center;
+    }
+
+    /* ── Move List ── */
+    .move-list-wrap {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .move-list-title {
+      font-size: .78rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 10px;
+    }
+    .move-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .move-chip {
+      background: var(--surface);
+      border: 1.5px solid transparent;
+      color: var(--muted);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: .82rem;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+      transition: all var(--trans);
+    }
+    .move-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .move-chip.current { background: var(--accent2); color: #fff; border-color: var(--accent2); }
+    .move-chip.past { color: var(--text); }
+
+    /* ── Info Section ── */
+    .info-section { display: flex; flex-direction: column; gap: 20px; }
+
+    .opening-title {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 800;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .opening-title .icon { font-size: 1.4em; }
+
+    .tag-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+    .tag {
+      font-size: .75rem;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .tag-beginner { background: #1a3a1a; color: #6adf7a; }
+    .tag-solid    { background: #1a2a3a; color: #6ab0df; }
+    .tag-aggressive { background: #3a1a1a; color: #df8a6a; }
+    .tag-classical  { background: #2a1a3a; color: #b07adf; }
+
+    .step-box {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 20px;
+      border-left: 4px solid var(--accent2);
+      min-height: 120px;
+    }
+    .step-num {
+      font-size: .75rem;
+      color: var(--accent2);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-bottom: 8px;
+    }
+    .step-move {
+      font-size: 1.4rem;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    .step-text {
+      font-size: .92rem;
+      color: var(--text);
+      line-height: 1.65;
+    }
+    .step-text strong { color: var(--accent); }
+
+    /* tip cards */
+    .tips-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 500px) { .tips-grid { grid-template-columns: 1fr; } }
+
+    .tip-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      border: 1.5px solid #ffffff0a;
+      transition: border-color var(--trans);
+    }
+    .tip-card:hover { border-color: var(--accent2); }
+    .tip-icon { font-size: 1.5rem; }
+    .tip-title { font-size: .82rem; font-weight: 700; color: var(--accent); margin-bottom: 3px; }
+    .tip-body  { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+
+    .section-label {
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    /* progress bar */
+    .progress-bar-wrap {
+      background: var(--card);
+      border-radius: 40px;
+      height: 6px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent2), var(--accent));
+      border-radius: 40px;
+      transition: width .4s ease;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 28px 20px;
+      color: var(--muted);
+      font-size: .82rem;
+      border-top: 1px solid #ffffff0a;
+    }
+
+    /* ── Animations ── */
+    @keyframes pop-in {
+      from { opacity: 0; transform: scale(.85); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .piece { animation: pop-in .15s ease; }
+
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(226,185,111,.4); }
+      50%      { box-shadow: 0 0 0 8px rgba(226,185,111,0); }
+    }
+    .sq.highlight { animation: pulse 1.2s infinite; }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #333355; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<section class="hero">
+  <h1>Belajar Chess Openings</h1>
+  <p>Pelajari tiga opening catur paling populer — interaktif, langkah demi langkah, lengkap dengan penjelasan strategi.</p>
+</section>
+
+<!-- ══════════ TAB NAV ══════════ -->
+<nav class="tab-nav" role="tablist">
+  <button class="tab-btn active" onclick="switchTab('ruy')" role="tab">
+    ♘ Ruy Lopez <span class="badge">Klasik</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('italian')" role="tab">
+    ♗ Italian Game <span class="badge">Pemula</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('queens')" role="tab">
+    ♕ Queen's Gambit <span class="badge">Populer</span>
+  </button>
+</nav>
+
+<!-- ══════════ RUY LOPEZ ══════════ -->
+<div id="panel-ruy" class="opening-panel active">
+  <div class="panel-inner">
+    <!-- Board -->
+    <div class="board-section">
+      <div class="board-wrap">
+        <div class="chessboard" id="board-ruy"></div>
+      </div>
+      <!-- Progress -->
+      <div>
+        <div class="section-label">Progress gerakan</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="prog-ruy" style="width:0%"></div>
+        </div>
+      </div>
+      <!-- Controls -->
+      <div class="controls">
+        <button class="ctrl-btn" id="ruy-start" onclick="goStart('ruy')" title="Ke awal">⏮</button>
+        <button class="ctrl-btn" id="ruy-prev"  onclick="goPrev('ruy')"  title="Kembali">◀</button>
+        <span class="move-counter" id="cnt-ruy">0 / 6</span>
+        <button class="ctrl-btn" id="ruy-next"  onclick="goNext('ruy')"  title="Lanjut">▶</button>
+        <button class="ctrl-btn" id="ruy-end"   onclick="goEnd('ruy')"   title="Ke akhir">⏭</button>
+      </div>
+      <!-- Move list -->
+      <div class="move-list-wrap">
+        <div class="move-list-title">Urutan Gerakan</div>
+        <div class="move-list" id="movelist-ruy"></div>
+      </div>
+    </div>
+
+    <!-- Info -->
+    <div class="info-section">
+      <div>
+        <div class="opening-title"><span class="icon">♘</span> Ruy Lopez</div>
+        <div class="tag-row">
+          <span class="tag tag-classical">Klasik</span>
+          <span class="tag tag-solid">Strategis</span>
+        </div>
+      </div>
+
+      <div class="step-box" id="stepbox-ruy">
+        <div class="step-num" id="stepnum-ruy">Gerakan 0</div>
+        <div class="step-move" id="stepmove-ruy">Posisi Awal</div>
+        <div class="step-text" id="steptext-ruy">
+          Klik ▶ untuk mulai mempelajari Ruy Lopez — salah satu opening paling bersejarah dalam catur. Dinamai dari pendeta Spanyol Ruy López de Segura yang menulis tentangnya pada tahun 1561.
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">Kenapa pakai Ruy Lopez?</div>
+        <div class="tips-grid">
+          <div class="tip-card">
+            <div class="tip-icon">🎯</div>
+            <div>
+              <div class="tip-title">Kontrol Center</div>
+              <div class="tip-body">Menyerang pion e5 hitam secara tidak langsung, memaksa lawan defensif.</div>
+            </div>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">📚</div>
+            <div>
+              <div class="tip-title">Proven Theory</div>
+              <div class="tip-body">Dipakai oleh hampir semua World Chess Champion, dari Morphy hingga Carlsen.</div>
+            </div>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">⚡</div>
+            <div>
+              <div class="tip-title">Tekanan Konstan</div>
+              <div class="tip-body">Putih langsung memberi tekanan dari awal tanpa overextend.</div>
+            </div>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">🔄</div>
+            <div>
+              <div class="tip-title">Fleksibel</div>
+              <div class="tip-body">Bisa berlanjut ke banyak varian: Berlin, Marshall, Closed, dll.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ ITALIAN GAME ══════════ -->
+<div id="panel-italian" class="opening-panel">
+  <div class="panel-inner">
+    <div class="board-section">
+      <div class="board-wrap">
+        <div class="chessboard" id="board-italian"></div>
+      </div>
+      <div>
+        <div class="section-label">Progress gerakan</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="prog-italian" style="width:0%"></div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="ctrl-btn" onclick="goStart('italian')" title="Ke awal">⏮</button>
+        <button class="ctrl-btn" onclick="goPrev('italian')"  title="Kembali">◀</button>
+        <span class="move-counter" id="cnt-italian">0 / 6</span>
+        <button class="ctrl-btn" onclick="goNext('italian')"  title="Lanjut">▶</button>
+        <button class="ctrl-btn" onclick="goEnd('italian')"   title="Ke akhir">⏭</button>
+      </div>
+      <div class="move-list-wrap">
+        <div class="move-list-title">Urutan Gerakan</div>
+        <div class="move-list" id="movelist-italian"></div>
+      </div>
+    </div>
+
+    <div class="info-section">
+      <div>
+        <div class="opening-title"><span class="icon">♗</span> Italian Game</div>
+        <div class="tag-row">
+          <span class="tag tag-beginner">Pemula Friendly</span>
+          <span class="tag tag-solid">Solid</span>
+        </div>
+      </div>
+
+      <div class="step-box" id="stepbox-italian">
+        <div class="step-num" id="stepnum-italian">Gerakan 0</div>
+        <div class="step-move" id="stepmove-italian">Posisi Awal</div>
+        <div class="step-text" id="steptext-italian">
+          Klik ▶ untuk mulai. Italian Game (Giuoco Piano) adalah opening paling cocok untuk pemula. Namanya berarti "permainan tenang" dalam bahasa Italia — tapi bisa sangat tajam!
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">Kenapa pakai Italian Game?</div>
+        <div class="tips-grid">
+          <div class="tip-card">
+            <div class="tip-icon">🏫</div>
+            <div>
+              <div class="tip-title">Mudah Dipelajari</div>
+              <div class="tip-body">Prinsip-prinsipnya sangat jelas: kontrol center, kembangkan buah, rokade.</div>
+            </div>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">🗡️</div>
+            <div>
+              <div class="tip-title">Serangan Cepat</div>
+              <div class="tip-body">Bisa transisi ke Evans Gambit atau Fried Liver Attack yang sangat tajam.</div>
+            </div>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">🏰</div>
+            <div>
+              <div class="tip-title">Rokade Cepat</div>
+              <div class="tip-body">Struktur natural yang memudahkan rokade kingside untuk keamanan Raja.</div>
+            </div>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">🎓</div>
+            <div>
+              <div class="tip-title">Belajar Prinsip</div>
+              <div class="tip-body">Mengajarkan prinsip dasar: bishop aktif di diagonal panjang = kuat.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ QUEEN'S GAMBIT ══════════ -->
+<div id="panel-queens" class="opening-panel">
+  <div class="panel-inner">
+    <div class="board-section">
+      <div class="board-wrap">
+        <div class="chessboard" id="board-queens"></div>
+      </div>
+      <div>
+        <div class="section-label">Progress gerakan</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="prog-queens" style="width:0%"></div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="ctrl-btn" onclick="goStart('queens')" title="Ke awal">⏮</button>
+        <button class="ctrl-btn" onclick="goPrev('queens')"  title="Kembali">◀</button>
+        <span class="move-counter" id="cnt-queens">0 / 6</span>
+        <button class="ctrl-btn" onclick="goNext('queens')"  title="Lanjut">▶</button>
+        <button class="ctrl-btn" onclick="goEnd('queens')"   title="Ke akhir">⏭</button>
+      </div>
+      <div class="move-list-wrap">
+        <div class="move-list-title">Urutan Gerakan</div>
+        <div class="move-list" id="movelist-queens"></div>
+      </div>
+    </div>
+
+    <div class="info-section">
+      <div>
+        <div class="opening-title"><span class="icon">♕</span> Queen's Gambit</div>
+        <div class="tag-row">
+          <span class="tag tag-aggressive">Gambit</span>
+          <span class="tag tag-classical">Klasik</span>
+        </div>
+      </div>
+
+      <div class="step-box" id="stepbox-queens">
+        <div class="step-num" id="stepnum-queens">Gerakan 0</div>
+        <div class="step-move" id="stepmove-queens">Posisi Awal</div>
+        <div class="step-text" id="steptext-queens">
+          Klik ▶ untuk mulai. Queen's Gambit adalah pembuka pion d yang paling terkenal. Dipopulerkan lagi oleh serial Netflix "The Queen's Gambit" — tapi sudah dimainkan sejak abad ke-15!
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">Kenapa pakai Queen's Gambit?</div>
+        <div class="tips-grid">
+          <div class="tip-card">
+            <div class="tip-icon">👑</div>
+            <div>
+              <div class="tip-title">Dominasi Center</div>
+              <div class="tip-body">Mengklaim center dengan dua pion, memberikan ruang yang sangat luas.</div>
+            </div>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">🎭</div>
+            <div>
+              <div class="tip-title">Bukan Gambit Sejati</div>
+              <div class="tip-body">Pion c4 hampir selalu bisa direbut kembali — gambit yang sangat aman!</div>
+            </div>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">🏆</div>
+            <div>
+              <div class="tip-title">Level Top</div>
+              <div class="tip-body">Favorite para grandmaster — Kasparov, Carlsen, Gukesh semuanya mainkan ini.</div>
+            </div>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">🧩</div>
+            <div>
+              <div class="tip-title">Banyak Variasi</div>
+              <div class="tip-body">QGD, QGA, Slav, Semi-Slav — pilihan tak terbatas untuk eksplorasi.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  ♟ Chess Openings Interaktif &nbsp;·&nbsp; Dibuat untuk pemula yang ingin naik level &nbsp;·&nbsp; 2026
+</footer>
+
+<script>
+/* ─────────────────────────────────────────────────────────────────
+   PIECE UNICODE MAP
+   W = White, B = Black
+───────────────────────────────────────────────────────────────── */
+const PIECES = {
+  WK:'♔', WQ:'♕', WR:'♖', WB:'♗', WN:'♘', WP:'♙',
+  BK:'♚', BQ:'♛', BR:'♜', BB:'♝', BN:'♞', BP:'♟',
+};
+
+/* ─────────────────────────────────────────────────────────────────
+   BOARD STATE SNAPSHOTS
+   Each "snapshot" is a full 8x8 description of the board AFTER a move.
+   Format: array[64], index 0 = a8 (top-left), index 63 = h1 (bottom-right)
+   null = empty square
+───────────────────────────────────────────────────────────────── */
+
+function initBoard() {
+  /* Standard starting position */
+  return [
+    'BR','BN','BB','BQ','BK','BB','BN','BR',  // rank 8
+    'BP','BP','BP','BP','BP','BP','BP','BP',  // rank 7
+    null,null,null,null,null,null,null,null,  // rank 6
+    null,null,null,null,null,null,null,null,  // rank 5
+    null,null,null,null,null,null,null,null,  // rank 4
+    null,null,null,null,null,null,null,null,  // rank 3
+    'WP','WP','WP','WP','WP','WP','WP','WP', // rank 2
+    'WR','WN','WB','WQ','WK','WB','WN','WR', // rank 1
+  ];
+}
+
+/* helper: clone an array */
+function clone(b) { return [...b]; }
+
+/* helper: algebraic index → array index.  a8=0, h1=63 */
+function idx(file, rank) {
+  // file: 0-7 (a-h), rank: 1-8
+  return (8 - rank) * 8 + file;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   RUY LOPEZ  1.e4 e5  2.Nf3 Nc6  3.Bb5
+───────────────────────────────────────────────────────────────── */
+function buildRuy() {
+  const states = [];
+  const highlights = []; // pairs [from, to] indices
+
+  // s0 - start
+  let b = initBoard();
+  states.push(clone(b));
+  highlights.push([]);
+
+  // 1. e4 — white pawn e2→e4
+  b[idx(4,4)] = b[idx(4,2)]; b[idx(4,2)] = null;
+  states.push(clone(b));
+  highlights.push([idx(4,2), idx(4,4)]);
+
+  // 1... e5 — black pawn e7→e5
+  b[idx(4,5)] = b[idx(4,7)]; b[idx(4,7)] = null;
+  states.push(clone(b));
+  highlights.push([idx(4,7), idx(4,5)]);
+
+  // 2. Nf3 — white knight g1→f3
+  b[idx(5,3)] = b[idx(6,1)]; b[idx(6,1)] = null;
+  states.push(clone(b));
+  highlights.push([idx(6,1), idx(5,3)]);
+
+  // 2... Nc6 — black knight b8→c6
+  b[idx(2,6)] = b[idx(1,8)]; b[idx(1,8)] = null;
+  states.push(clone(b));
+  highlights.push([idx(1,8), idx(2,6)]);
+
+  // 3. Bb5 — white bishop f1→b5
+  b[idx(1,5)] = b[idx(5,1)]; b[idx(5,1)] = null;
+  states.push(clone(b));
+  highlights.push([idx(5,1), idx(1,5)]);
+
+  // 3... a6 — black pawn a7→a6 (Morphy Defense)
+  b[idx(0,6)] = b[idx(0,7)]; b[idx(0,7)] = null;
+  states.push(clone(b));
+  highlights.push([idx(0,7), idx(0,6)]);
+
+  return { states, highlights };
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   ITALIAN GAME  1.e4 e5  2.Nf3 Nc6  3.Bc4
+───────────────────────────────────────────────────────────────── */
+function buildItalian() {
+  const states = [];
+  const highlights = [];
+
+  let b = initBoard();
+  states.push(clone(b));
+  highlights.push([]);
+
+  // 1. e4
+  b[idx(4,4)] = b[idx(4,2)]; b[idx(4,2)] = null;
+  states.push(clone(b));
+  highlights.push([idx(4,2), idx(4,4)]);
+
+  // 1... e5
+  b[idx(4,5)] = b[idx(4,7)]; b[idx(4,7)] = null;
+  states.push(clone(b));
+  highlights.push([idx(4,7), idx(4,5)]);
+
+  // 2. Nf3
+  b[idx(5,3)] = b[idx(6,1)]; b[idx(6,1)] = null;
+  states.push(clone(b));
+  highlights.push([idx(6,1), idx(5,3)]);
+
+  // 2... Nc6
+  b[idx(2,6)] = b[idx(1,8)]; b[idx(1,8)] = null;
+  states.push(clone(b));
+  highlights.push([idx(1,8), idx(2,6)]);
+
+  // 3. Bc4 — white bishop f1→c4
+  b[idx(2,4)] = b[idx(5,1)]; b[idx(5,1)] = null;
+  states.push(clone(b));
+  highlights.push([idx(5,1), idx(2,4)]);
+
+  // 3... Bc5 — black bishop f8→c5
+  b[idx(2,5)] = b[idx(5,8)]; b[idx(5,8)] = null;
+  states.push(clone(b));
+  highlights.push([idx(5,8), idx(2,5)]);
+
+  return { states, highlights };
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   QUEEN'S GAMBIT  1.d4 d5  2.c4  2...dxc4 / 2...e6
+   We show the classical QGD: 1.d4 d5 2.c4 e6 3.Nc3
+───────────────────────────────────────────────────────────────── */
+function buildQueens() {
+  const states = [];
+  const highlights = [];
+
+  let b = initBoard();
+  states.push(clone(b));
+  highlights.push([]);
+
+  // 1. d4 — white pawn d2→d4
+  b[idx(3,4)] = b[idx(3,2)]; b[idx(3,2)] = null;
+  states.push(clone(b));
+  highlights.push([idx(3,2), idx(3,4)]);
+
+  // 1... d5 — black pawn d7→d5
+  b[idx(3,5)] = b[idx(3,7)]; b[idx(3,7)] = null;
+  states.push(clone(b));
+  highlights.push([idx(3,7), idx(3,5)]);
+
+  // 2. c4 — white pawn c2→c4 (THE GAMBIT)
+  b[idx(2,4)] = b[idx(2,2)]; b[idx(2,2)] = null;
+  states.push(clone(b));
+  highlights.push([idx(2,2), idx(2,4)]);
+
+  // 2... e6 — black pawn e7→e6 (QGD)
+  b[idx(4,6)] = b[idx(4,7)]; b[idx(4,7)] = null;
+  states.push(clone(b));
+  highlights.push([idx(4,7), idx(4,6)]);
+
+  // 3. Nc3 — white knight b1→c3
+  b[idx(2,3)] = b[idx(1,1)]; b[idx(1,1)] = null;
+  states.push(clone(b));
+  highlights.push([idx(1,1), idx(2,3)]);
+
+  // 3... Nf6 — black knight g8→f6
+  b[idx(5,6)] = b[idx(6,8)]; b[idx(6,8)] = null;
+  states.push(clone(b));
+  highlights.push([idx(6,8), idx(5,6)]);
+
+  return { states, highlights };
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   MOVE META — labels & explanations per step
+───────────────────────────────────────────────────────────────── */
+const META = {
+  ruy: [
+    {
+      label: 'Posisi Awal',
+      move: '—',
+      text: 'Papan catur di posisi awal. Ruy Lopez dimulai dengan 1.e4 — gerakan paling umum di catur modern. Klik ▶ untuk melanjutkan.'
+    },
+    {
+      label: 'Gerakan 1 (Putih)',
+      move: '1. e4',
+      text: '<strong>e4</strong> — Pion raja putih maju dua langkah. Gerakan terpopuler dalam sejarah catur. Mengklaim center, membuka jalur untuk Bishop (♗) dan Ratu (♕).'
+    },
+    {
+      label: 'Gerakan 1 (Hitam)',
+      move: '1... e5',
+      text: '<strong>e5</strong> — Hitam merespons simetris. "Cermin" di center memberikan pertarungan yang seimbang. Ini membuka Open Game (1.e4 e5).'
+    },
+    {
+      label: 'Gerakan 2 (Putih)',
+      move: '2. Nf3',
+      text: '<strong>Nf3</strong> — Knight ke f3, menyerang pion e5 hitam. Prinsip: kembangkan buah ke kotak aktif! Knight ini mengancam dan aktif sekaligus.'
+    },
+    {
+      label: 'Gerakan 2 (Hitam)',
+      move: '2... Nc6',
+      text: '<strong>Nc6</strong> — Knight hitam ke c6, mempertahankan pion e5. Juga aktif dan mengontrol center. Ini adalah respon terkuat dan paling natural.'
+    },
+    {
+      label: 'Gerakan 3 (Putih)',
+      move: '3. Bb5 ⭐',
+      text: '<strong>Bb5!</strong> — Inilah Ruy Lopez! Bishop ke b5 menyerang Knight c6 — yang mempertahankan pion e5. Secara tidak langsung, putih mengancam e5. Tekanan "pin" yang elegan!'
+    },
+    {
+      label: 'Gerakan 3 (Hitam)',
+      move: '3... a6',
+      text: '<strong>a6</strong> — "Morphy Defense" — paling populer! Hitam mengusir bishop. Jika Bxc6, hitam balas dxc6 lalu punya dua bishop. Pertarungan sengit dimulai...'
+    },
+  ],
+  italian: [
+    {
+      label: 'Posisi Awal',
+      move: '—',
+      text: 'Italian Game adalah salah satu opening tertua dan paling cocok untuk pemula. Idenya sederhana: kontrol center, kembangkan buah, rokade. Klik ▶ untuk mulai.'
+    },
+    {
+      label: 'Gerakan 1 (Putih)',
+      move: '1. e4',
+      text: '<strong>e4</strong> — Sama seperti Ruy Lopez, dimulai dengan e4. Open Game memberikan permainan yang aktif dan penuh taktik. Kontrol center adalah fondasi semua opening bagus.'
+    },
+    {
+      label: 'Gerakan 1 (Hitam)',
+      move: '1... e5',
+      text: '<strong>e5</strong> — Hitam mengklaim setengah center juga. Ini melahirkan "Open Game" atau "Double King Pawn Opening." Permainan akan terbuka dan taktis.'
+    },
+    {
+      label: 'Gerakan 2 (Putih)',
+      move: '2. Nf3',
+      text: '<strong>Nf3</strong> — Mengembangkan knight dan menyerang e5. Gerakan yang sama dengan Ruy Lopez! Opening seringkali transpositional — urutan sama, tapi tujuan berbeda.'
+    },
+    {
+      label: 'Gerakan 2 (Hitam)',
+      move: '2... Nc6',
+      text: '<strong>Nc6</strong> — Defend e5, kembangkan buah. Respon yang sama dengan Ruy Lopez. Sekarang putih akan membedakan dirinya dengan gerakan berikutnya...'
+    },
+    {
+      label: 'Gerakan 3 (Putih)',
+      move: '3. Bc4 ⭐',
+      text: '<strong>Bc4!</strong> — Ini Italian Game! Bishop ke c4 menargetkan titik <strong>f7</strong> — titik terlemah kerajaan hitam yang hanya dijaga Raja! Bishop aktif di diagonal tajam ini.'
+    },
+    {
+      label: 'Gerakan 3 (Hitam)',
+      move: '3... Bc5',
+      text: '<strong>Bc5</strong> — "Giuoco Piano" (permainan tenang). Hitam membalas dengan bishop aktif di c5. Kedua bishop mengincar kerajaan lawan. Tahap panas akan dimulai setelah rokade!'
+    },
+  ],
+  queens: [
+    {
+      label: 'Posisi Awal',
+      move: '—',
+      text: "Queen's Gambit adalah pembuka pion d yang paling legendaris. Berbeda dari 1.e4, putih memulai dengan 1.d4 — leading ke permainan yang lebih strategis dan positional. Klik ▶ untuk mulai."
+    },
+    {
+      label: 'Gerakan 1 (Putih)',
+      move: '1. d4',
+      text: '<strong>d4</strong> — Pion ratu maju dua langkah. Mengontrol center dari sisi lain. d4 membuka jalur Bishop ratu dan mulai pertempuran center yang berbeda dari 1.e4.'
+    },
+    {
+      label: 'Gerakan 1 (Hitam)',
+      move: '1... d5',
+      text: '<strong>d5</strong> — Hitam langsung menantang center. Simetris dan kuat. Ini adalah respon paling solid — hitam tidak mau menyerahkan center begitu saja.'
+    },
+    {
+      label: 'Gerakan 2 (Putih)',
+      move: '2. c4 ⭐',
+      text: '<strong>c4!</strong> — Inilah <strong>Queen\'s Gambit!</strong> Putih menawarkan pion c4 — kalau hitam ambil (dxc4), putih punya center dominan dengan d4 sendirian. Tapi apakah ini "gambit" sejati?'
+    },
+    {
+      label: 'Gerakan 2 (Hitam)',
+      move: '2... e6',
+      text: '<strong>e6</strong> — Queen\'s Gambit <strong>Declined</strong> (QGD). Hitam menolak pion! Bukan karena takut, tapi karena e6 memperkuat d5 dan membuka jalur bishop. Sangat solid!'
+    },
+    {
+      label: 'Gerakan 3 (Putih)',
+      move: '3. Nc3',
+      text: '<strong>Nc3</strong> — Mengembangkan knight, menekan d5 lagi. Putih terus menantang center hitam. Knight c3 bekerja sama dengan pion d4 dan c4 untuk dominasi total di center.'
+    },
+    {
+      label: 'Gerakan 3 (Hitam)',
+      move: '3... Nf6',
+      text: '<strong>Nf6</strong> — Knight aktif ke f6, mengancam center putih dan bersiap kastel. Posisi QGD klasik! Pertarungan strategis panjang di depan mata — itulah keindahan catur posisional.'
+    },
+  ],
+};
+
+/* ─────────────────────────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────────────────────────── */
+const DATA = {
+  ruy:    buildRuy(),
+  italian: buildItalian(),
+  queens:  buildQueens(),
+};
+
+const cursor = { ruy: 0, italian: 0, queens: 0 };
+
+/* ─────────────────────────────────────────────────────────────────
+   RENDER BOARD
+───────────────────────────────────────────────────────────────── */
+function renderBoard(opening) {
+  const step  = cursor[opening];
+  const { states, highlights } = DATA[opening];
+  const board = states[step];
+  const hl    = highlights[step]; // [fromIdx, toIdx] or []
+
+  const container = document.getElementById(`board-${opening}`);
+  container.innerHTML = '';
+
+  const FILES = ['a','b','c','d','e','f','g','h'];
+  const RANKS = [8,7,6,5,4,3,2,1];
+
+  for (let r = 0; r < 8; r++) {
+    for (let f = 0; f < 8; f++) {
+      const sqIdx  = r * 8 + f;
+      const isLight = (r + f) % 2 === 0;
+      const piece  = board[sqIdx];
+
+      const sq = document.createElement('div');
+      sq.className = 'sq ' + (isLight ? 'light' : 'dark');
+
+      if (hl.length === 2) {
+        if (sqIdx === hl[0]) sq.classList.add('from-sq');
+        if (sqIdx === hl[1]) sq.classList.add('highlight');
+      }
+
+      // Coord labels
+      if (f === 0) {
+        const cr = document.createElement('span');
+        cr.className = 'coord-row';
+        cr.textContent = RANKS[r];
+        sq.appendChild(cr);
+      }
+      if (r === 7) {
+        const cc = document.createElement('span');
+        cc.className = 'coord-col';
+        cc.textContent = FILES[f];
+        sq.appendChild(cc);
+      }
+
+      if (piece) {
+        const p = document.createElement('span');
+        p.className = 'piece';
+        p.textContent = PIECES[piece];
+        sq.appendChild(p);
+      }
+
+      container.appendChild(sq);
+    }
+  }
+
+  // Update counter
+  const total = states.length - 1;
+  document.getElementById(`cnt-${opening}`).textContent = `${step} / ${total}`;
+
+  // Progress bar
+  document.getElementById(`prog-${opening}`).style.width =
+    total === 0 ? '0%' : `${(step / total) * 100}%`;
+
+  // Move list chips
+  const ml = document.getElementById(`movelist-${opening}`);
+  ml.innerHTML = '';
+  const meta = META[opening];
+  for (let i = 0; i <= total; i++) {
+    const chip = document.createElement('button');
+    chip.className = 'move-chip' +
+      (i === step ? ' current' : i < step ? ' past' : '');
+    chip.textContent = i === 0 ? 'Start' : meta[i].move.replace(' ⭐','');
+    chip.onclick = (function(s) {
+      return function() { cursor[opening] = s; renderBoard(opening); renderStep(opening); };
+    })(i);
+    ml.appendChild(chip);
+  }
+
+  // Step info
+  renderStep(opening);
+}
+
+function renderStep(opening) {
+  const step = cursor[opening];
+  const m    = META[opening][step];
+  document.getElementById(`stepnum-${opening}`).textContent  = m.label;
+  document.getElementById(`stepmove-${opening}`).textContent = m.move;
+  document.getElementById(`steptext-${opening}`).innerHTML   = m.text;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   NAVIGATION
+───────────────────────────────────────────────────────────────── */
+function goNext(o)  { const max = DATA[o].states.length - 1; if (cursor[o] < max) { cursor[o]++; renderBoard(o); } }
+function goPrev(o)  { if (cursor[o] > 0) { cursor[o]--; renderBoard(o); } }
+function goStart(o) { cursor[o] = 0; renderBoard(o); }
+function goEnd(o)   { cursor[o] = DATA[o].states.length - 1; renderBoard(o); }
+
+/* ─────────────────────────────────────────────────────────────────
+   TAB SWITCHING
+───────────────────────────────────────────────────────────────── */
+function switchTab(opening) {
+  // Hide all panels
+  document.querySelectorAll('.opening-panel').forEach(p => p.classList.remove('active'));
+  // Deactivate all tab buttons
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
+  // Show target
+  document.getElementById(`panel-${opening}`).classList.add('active');
+  // Find and activate the clicked button
+  event.currentTarget.classList.add('active');
+
+  // Re-render board in case it hasn't been rendered yet
+  renderBoard(opening);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   KEYBOARD NAVIGATION
+───────────────────────────────────────────────────────────────── */
+function activeOpening() {
+  if (document.getElementById('panel-ruy').classList.contains('active'))    return 'ruy';
+  if (document.getElementById('panel-italian').classList.contains('active')) return 'italian';
+  return 'queens';
+}
+
+document.addEventListener('keydown', e => {
+  const o = activeOpening();
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goNext(o); }
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   { e.preventDefault(); goPrev(o); }
+  if (e.key === 'Home') { e.preventDefault(); goStart(o); }
+  if (e.key === 'End')  { e.preventDefault(); goEnd(o); }
+});
+
+/* ─────────────────────────────────────────────────────────────────
+   INIT
+───────────────────────────────────────────────────────────────── */
+renderBoard('ruy');
+renderBoard('italian');
+renderBoard('queens');
+</script>
+</body>
+</html>
